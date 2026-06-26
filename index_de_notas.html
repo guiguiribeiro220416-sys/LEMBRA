@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOTAS POR VOZ</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1e2e">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #121214;
+            color: #e1e1e6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #29292e;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #00b37e;
+            text-transform: uppercase;
+        }
+
+        .btn-install {
+            background-color: #00b37e;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            display: none;
+            cursor: pointer;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+        }
+
+        .input-area {
+            background-color: #202024;
+            border: 2px solid #29292e;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: transparent;
+            border: none;
+            color: #e1e1e6;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-transform: uppercase;
+        }
+
+        .btn-record {
+            background-color: #f75a68;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-record.recording {
+            background-color: #c72c41;
+            animation: pulse 1.5s infinite;
+        }
+
+        .btn-save {
+            background-color: #00b37e;
+            color: #ffffff;
+        }
+
+        .notes-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .notes-section h2 {
+            font-size: 1.2rem;
+            color: #8d8d99;
+            text-transform: uppercase;
+        }
+
+        .notes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .note-card {
+            background-color: #202024;
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+            border-left: 4px solid #00b37e;
+        }
+
+        .note-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+
+        .note-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #7c7c8a;
+        }
+
+        .btn-delete {
+            background: transparent;
+            color: #f75a68;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 4px 8px;
+        }
+
+        .status-bar {
+            text-align: center;
+            color: #8d8d99;
+            font-size: 0.85rem;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.98); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>NOTAS POR VOZ</h1>
+        <button id="installBtn" class="btn-install">INSTALAR</button>
+    </header>
+
+    <div class="main-container">
+        <div class="input-area">
+            <textarea id="noteInput" placeholder="DIGITE SUA NOTA OU TOQUE NO BOTÃO PARA GRAVAR SUA FALA..."></textarea>
+            <div class="controls">
+                <button id="recordBtn" class="btn-record">
+                    <span id="recordIcon">🎙️</span> <span id="recordText">GRAVAR VOZ</span>
+                </button>
+                <button id="saveBtn" class="btn-save">SALVAR NOTA</button>
+            </div>
+        </div>
+
+        <div class="notes-section">
+            <h2>MINHAS NOTAS</h2>
+            <div id="notesList" class="notes-list"></div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+        APLICATIVO INICIADO COM SUCESSO
+    </div>
+
+    <script>
+        // CONFIGURACAO DO SERVICE WORKER
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => {
+                        document.getElementById('statusBar').textContent = 'APLICATIVO PRONTO PARA USO OFFLINE';
+                    })
+                    .catch(err => {
+                        document.getElementById('statusBar').textContent = 'ERRO AO CONFIGURAR MODO OFFLINE';
+                    });
+            });
+        }
+
+        // ELEMENTOS DA TELA
+        const noteInput = document.getElementById('noteInput');
+        const recordBtn = document.getElementById('recordBtn');
+        const recordText = document.getElementById('recordText');
+        const recordIcon = document.getElementById('recordIcon');
+        const saveBtn = document.getElementById('saveBtn');
+        const notesList = document.getElementById('notesList');
+        const statusBar = document.getElementById('statusBar');
+        const installBtn = document.getElementById('installBtn');
+
+        let recognition = null;
+        let isRecording = false;
+        let notes = JSON.parse(localStorage.getItem('voice_notes') || '[]');
+
+        // VERIFICACAO DE SUPORTE A RECONHECIMENTO DE VOZ
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'pt-BR';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                recordBtn.classList.add('recording');
+                recordText.textContent = 'GRAVANDO...';
+                recordIcon.textContent = '🛑';
+                statusBar.textContent = 'OUVINDO SUA VOZ EM PORTUGUÊS...';
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                recordText.textContent = 'GRAVAR VOZ';
+                recordIcon.textContent = '🎙️';
+                statusBar.textContent = 'GRAVAÇÃO CONCLUÍDA';
+            };
+
+            recognition.onresult = (event) => {
+                const currentResultIndex = event.resultIndex;
+                const transcript = event.results[currentResultIndex][0].transcript;
+                
+                if (noteInput.value.trim() === '') {
+                    noteInput.value = transcript;
+                } else {
+                    noteInput.value += ' ' + transcript;
+                }
+                statusBar.textContent = 'TEXTO ATUALIZADO';
+            };
+
+            recognition.onerror = (event) => {
+                statusBar.textContent = 'ERRO NO RECONHECIMENTO: ' + event.error.toUpperCase();
+                stopRecording();
+            };
+        } else {
+            recordBtn.style.display = 'none';
+            statusBar.textContent = 'RECONHECIMENTO DE VOZ NÃO SUPORTADO NESTE NAVEGADOR';
+        }
+
+        // ACOES DO BOTAO DE GRAVACAO
+        function startRecording() {
+            if (recognition) {
+                recognition.start();
+            }
+        }
+
+        function stopRecording() {
+            if (recognition && isRecording) {
+                recognition.stop();
+            }
+        }
+
+        recordBtn.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        // ACOES DE SALVAMENTO E EXIBICAO DAS NOTAS
+        function renderNotes() {
+            notesList.innerHTML = '';
+            if (notes.length === 0) {
+                notesList.innerHTML = '<p style="color: #7c7c8a; text-align: center; margin-top: 10px;">NENHUMA NOTA SALVA AINDA.</p>';
+                return;
+            }
+
+            notes.forEach((note, index) => {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+
+                const text = document.createElement('p');
+                text.className = 'note-text';
+                text.textContent = note.content;
+
+                const footer = document.createElement('div');
+                footer.className = 'note-footer';
+
+                const date = document.createElement('span');
+                date.textContent = note.date;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-delete';
+                deleteBtn.textContent = 'EXCLUIR';
+                deleteBtn.addEventListener('click', () => deleteNote(index));
+
+                footer.appendChild(date);
+                footer.appendChild(deleteBtn);
+                card.appendChild(text);
+                card.appendChild(footer);
+                notesList.appendChild(card);
+            });
+        }
+
+        function saveNote() {
+            const content = noteInput.value.trim();
+            if (!content) {
+                statusBar.textContent = 'ESCREVA OU FALE ALGO ANTES DE SALVAR';
+                return;
+            }
+
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            const newNote = {
+                content: content,
+                date: formattedDate
+            };
+
+            notes.unshift(newNote);
+            localStorage.setItem('voice_notes', JSON.stringify(notes));
+            noteInput.value = '';
+            renderNotes();
+            statusBar.textContent = 'NOTA SALVA COM SUCESSO';
+        }
+
+        function deleteNote(index) {
+            notes.splice(index, 1);
+            localStorage.setItem('voice_notes', JSON.stringify(notes));
+            renderNotes();
+            statusBar.textContent = 'NOTA REMOVIDA';
+        }
+
+        saveBtn.addEventListener('click', saveNote);
+
+        // CONFIGURACAO DA INSTALACAO PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+            statusBar.textContent = 'APLICATIVO DISPONÍVEL PARA INSTALAÇÃO';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    statusBar.textContent = 'OBRIGADO POR INSTALAR O APLICATIVO';
+                }
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            statusBar.textContent = 'APLICATIVO INSTALADO COM SUCESSO';
+            installBtn.style.display = 'none';
+        });
+
+        // INICIALIZACAO DA TELA
+        renderNotes();
+    </script>
+</body>
+</html>
